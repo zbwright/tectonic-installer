@@ -13,12 +13,16 @@ const (
 	awsAccessKeyIdEnv     = "AWS_ACCESS_KEY_ID"
 	awsSecretAccessKeyEnv = "AWS_SECRET_ACCESS_KEY"
 	awsRegionEnv          = "AWS_REGION"
+	clusterNameEnv        = "CLUSTER_NAME"
 )
+
+var clusterName = os.Getenv(clusterNameEnv)
 
 func GetAWSClient() *ec2.EC2 {
 	awsAccessKeyId := os.Getenv(awsAccessKeyIdEnv)
 	awsSecretAccessKey := os.Getenv(awsSecretAccessKeyEnv)
 	awsRegion := os.Getenv(awsRegionEnv)
+
 
 	if awsAccessKeyId == "" || awsSecretAccessKey == "" {
 		log.Fatal("AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY env variables are not set")
@@ -39,6 +43,10 @@ func GetAwsInstances() (*ec2.DescribeInstancesOutput, error) {
 				Name:   aws.String("instance-state-name"),
 				Values: []*string{aws.String("running"), aws.String("pending")},
 			},
+			{
+				Name: 	aws.String("tag:KubernetesCluster"),
+				Values: []*string{aws.String(clusterName)},
+			},
 		},
 	}
 	resp, err := client.DescribeInstances(params)
@@ -55,11 +63,16 @@ func GetAwsVolumes() (*ec2.DescribeVolumesOutput, error) {
 
 	client := GetAWSClient()
 
+
 	volumeParams := &ec2.DescribeVolumesInput{
 		Filters: []*ec2.Filter{
 			{
 				Name:   aws.String("status"),
 				Values: []*string{aws.String("in-use"), aws.String("available")},
+			},
+			{
+				Name: 	aws.String("tag:KubernetesCluster"),
+				Values: []*string{aws.String(clusterName)},
 			},
 		},
 	}
