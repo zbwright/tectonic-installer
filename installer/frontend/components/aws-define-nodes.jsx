@@ -12,6 +12,7 @@ import {
   STORAGE_IOPS,
   STORAGE_SIZE_IN_GIB,
   STORAGE_TYPE,
+  UPDATER_ENABLED,
 } from '../cluster-config';
 
 import { Field, Form } from '../form';
@@ -19,6 +20,7 @@ import { toError, toAsyncError } from '../utils';
 import { AWS_INSTANCE_TYPES } from '../facts';
 import { validate } from '../validate';
 import { NumberInput, Connect, Select } from './ui';
+import { Etcd } from './etcd';
 
 const toKey = (name, field) => `${name}-${field}`;
 
@@ -189,12 +191,27 @@ const form = new Form(DefineNodesForm, fields, {
   // dependencies: [ENTITLEMENTS],
 });
 
-export const AWS_DefineNodes = () =>
+const stateToProps = ({clusterConfig}) => ({
+  updaterEnabled: clusterConfig[UPDATER_ENABLED],
+});
+
+export const AWS_DefineNodes = connect(stateToProps)(({updaterEnabled}) =>
   <div>
     <DefineNode type={AWS_CONTROLLERS} name="Masters" max={10} />
     <hr/>
     <DefineNode type={AWS_WORKERS} name="Workers" />
     <form.Errors />
-  </div>;
+    { !updaterEnabled &&
+      <div>
+        <hr />
+        <Etcd />
+      </div> }
+  </div>);
 
-AWS_DefineNodes.canNavigateForward = form.canNavigateForward;
+AWS_DefineNodes.canNavigateForward = state => {
+  let ok = form.canNavigateForward(state);
+  if (!state.clusterConfig[UPDATER_ENABLED]) {
+    ok = ok && Etcd.canNavigateForward(state);
+  }
+  return ok;
+};
